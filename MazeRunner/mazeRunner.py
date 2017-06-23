@@ -32,6 +32,12 @@ class PlayerSprite(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = (20, 100)
 
+    def move(self, direction):
+        vel = 2
+        dx, dy = [tmp*vel for tmp in direction]
+        x, y = self.rect.center
+        self.rect.center = x+dx, y+dy
+
 
 class MazeRunner():
 
@@ -71,6 +77,17 @@ class MazeRunner():
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
 
+        keys_pressed = pygame.key.get_pressed()
+
+        if keys_pressed[pygame.K_UP]:
+            self.playerSprite.move((0, -1))
+        if keys_pressed[pygame.K_DOWN]:
+            self.playerSprite.move((0, 1))
+        if keys_pressed[pygame.K_LEFT]:
+            self.playerSprite.move((-1, 0))
+        if keys_pressed[pygame.K_RIGHT]:
+            self.playerSprite.move((1, 0))
+
     def _viewTick(self):
         self.runtime += self.clock.tick(FPS)
         surface = self.font.render(str(self.runtime), True, BLACK)
@@ -88,4 +105,4 @@ class MazeRunner():
 if __name__ == "__main__":
    mr = MazeRunner()
    mr.run()
-   rm.cleanup()
+   mr.cleanup()
