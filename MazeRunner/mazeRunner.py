@@ -12,9 +12,25 @@ License:    Apache License 2.0
 import pygame
 
 SCREEN_SIZE = (640, 480)
+PLAYER_RADIUS = 10
 WHITE = (230, 230, 230)
+RED = (255, 0, 0)
 BLACK = (0, 0, 0)
+CLEAR = (0, 0, 0, 0)
 FPS = 30
+
+
+class PlayerSprite(pygame.sprite.Sprite):
+
+    """ Player's Sprite """
+
+    def __init__(self):
+        super(PlayerSprite, self).__init__()
+        self.image = pygame.Surface((PLAYER_RADIUS*2, PLAYER_RADIUS*2), pygame.SRCALPHA)
+        self.image.fill(CLEAR)
+        pygame.draw.circle(self.image, RED, (10, 10), PLAYER_RADIUS, 0)
+        self.rect = self.image.get_rect()
+        self.rect.center = (20, 100)
 
 
 class MazeRunner():
@@ -35,6 +51,12 @@ class MazeRunner():
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont('freeansbold.ttf', 24)
 
+        # player
+        self.playerSprite = PlayerSprite()
+        self.playerSpriteGroup = pygame.sprite.Group()
+        self.playerSprite.add(self.playerSpriteGroup)
+
+
     def run(self):
         self.running = True
         while self.running:
@@ -54,6 +76,8 @@ class MazeRunner():
         surface = self.font.render(str(self.runtime), True, BLACK)
         self.screen.blit(self.background, (0,0))
         self.screen.blit(surface, (50,50))
+
+        self.playerSpriteGroup.draw(self.screen)
         pygame.display.update()
 
     def cleanup(self):
