@@ -1,5 +1,8 @@
 {
     "SCREEN_SIZE": "(640, 480)",
-    "PLAYER_RADIUS": "10",
-    "FPS": "60"
+    "FPS": "60",
+
+    "PLAYER_RADIUS": "7",
+    "PLAYER_MAXSPEED": "4.0",
+    "PLAYER_DRAG": "0.80"
 }
