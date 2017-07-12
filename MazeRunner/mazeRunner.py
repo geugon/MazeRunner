@@ -42,6 +42,7 @@ class PlayerSprite(pygame.sprite.Sprite):
         self.image.fill(colors.CLEAR)
         pygame.draw.circle(self.image, colors.RED, (r, r), r, 0)
         self.rect = self.image.get_rect()
+        self.image = self.image.convert_alpha()
 
         # setup movement
         self._acc = settings.PLAYER_MAXSPEED*settings.PLAYER_DRAG
@@ -89,29 +90,56 @@ class PlayerSprite(pygame.sprite.Sprite):
         pos = tuple((int(x) for x in self._pos))
         self.rect.center = pos
 
+
+class View():
+
+    """ Controls all displays to screen """
+
+    def __init__(self):
+        self.screen = pygame.display.set_mode(settings.SCREEN_SIZE)
+        self._spriteGroups = {}
+
+        # background
+        self.background = pygame.Surface(self.screen.get_size())
+        self.background.fill(colors.WHITE)
+        self.background = self.background.convert()
+
+    def store_sprite(self, sprite, groupName):
+        if groupName not in self._spriteGroups:
+            self._spriteGroups[groupName] = pygame.sprite.Group()
+        sprite.add(self._spriteGroups[groupName])
+
+    def draw_background(self):
+        self.screen.blit(self.background, (0,0))
+        
+    def blit(self, surface, pos):
+        """ Manually draw to screen """
+        self.screen.blit(surface, pos)
+
+    def update(self):
+        for k, v in self._spriteGroups.items():
+            v.update()
+            v.draw(self.screen)
+        pygame.display.update()
+
+
 class MazeRunner():
 
     """ The game... """
 
     def __init__(self):
         pygame.init()
+        self.view = View()
         self.running = False
-        self.screen = pygame.display.set_mode(settings.SCREEN_SIZE)
         self.runtime = 0
         
-        # background
-        self.background = pygame.Surface(self.screen.get_size())
-        self.background.fill(colors.WHITE)
-
         # setup
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont('freeansbold.ttf', 24)
 
         # player
         self.playerSprite = PlayerSprite()
-        self.playerSpriteGroup = pygame.sprite.Group()
-        self.playerSprite.add(self.playerSpriteGroup)
-
+        self.view.store_sprite(self.playerSprite, 'player')
 
     def run(self):
         self.running = True
@@ -135,13 +163,10 @@ class MazeRunner():
 
     def _viewTick(self):
         self.runtime += self.clock.tick(settings.FPS)
-        surface = self.font.render(str(self.runtime), True, colors.BLACK)
-        self.screen.blit(self.background, (0,0))
-        self.screen.blit(surface, (50,50))
-
-        self.playerSpriteGroup.draw(self.screen)
-        self.playerSpriteGroup.update()
-        pygame.display.update()
+        HUDclock = self.font.render(str(self.runtime), True, colors.BLACK)
+        self.view.draw_background()
+        self.view.blit(HUDclock, (50,50))
+        self.view.update()
 
     def cleanup(self):
         pygame.quit()
