@@ -3,6 +3,6 @@
     "FPS": "60",
 
     "PLAYER_RADIUS": "7",
-    "PLAYER_MAXSPEED": "4.0",
-    "PLAYER_DRAG": "0.80"
+    "PLAYER_MAXSPEED": "600.0",
+    "PLAYER_DRAG": "2.0"
 }

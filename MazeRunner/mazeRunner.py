@@ -80,13 +80,15 @@ class PlayerSprite(pygame.sprite.Sprite):
 
         self._dir = (x,y)
 
-    def update(self):
-        dx = (1.0-self._drag)*self._vel[0] + self._acc*self._dir[0]
-        dy = (1.0-self._drag)*self._vel[1] + self._acc*self._dir[1]
+    def update(self, timestep):
+        # velocities are pixels/sec
+        dx = (1.0-timestep*self._drag)*self._vel[0] + timestep*self._acc*self._dir[0]
+        dy = (1.0-timestep*self._drag)*self._vel[1] + timestep*self._acc*self._dir[1]
+        print("x={}\tdx={}\ttimestep={}\tdrag={}\tacc=={}".format(self._pos[0],dx,timestep,self._drag,self._acc)) 
 
         self._vel = (dx, dy)
-        self._pos = (self._pos[0]+self._vel[0],
-                     self._pos[1]+self._vel[1])
+        self._pos = (self._pos[0]+self._vel[0]*timestep,
+                     self._pos[1]+self._vel[1]*timestep)
         pos = tuple((int(x) for x in self._pos))
         self.rect.center = pos
 
@@ -97,6 +99,7 @@ class View():
 
     def __init__(self):
         self.screen = pygame.display.set_mode(settings.SCREEN_SIZE)
+        pygame.display.set_caption("Maze Runner by Geugon")
         self._spriteGroups = {}
 
         # background
@@ -116,9 +119,9 @@ class View():
         """ Manually draw to screen """
         self.screen.blit(surface, pos)
 
-    def update(self):
+    def update(self, timestep):
         for k, v in self._spriteGroups.items():
-            v.update()
+            v.update(timestep)
             v.draw(self.screen)
         pygame.display.update()
 
@@ -144,6 +147,7 @@ class MazeRunner():
     def run(self):
         self.running = True
         while self.running:
+            self.runtime += self.clock.tick(settings.FPS)
             self._controlTick()
             self._viewTick()
     
@@ -162,11 +166,11 @@ class MazeRunner():
                                         keys_pressed[pygame.K_RIGHT])
 
     def _viewTick(self):
-        self.runtime += self.clock.tick(settings.FPS)
-        HUDclock = self.font.render(str(self.runtime), True, colors.BLACK)
+        msg = "Run time: {}".format(str(self.runtime/1000.0))
+        HUDclock = self.font.render(msg, True, colors.BLACK)
         self.view.draw_background()
         self.view.blit(HUDclock, (50,50))
-        self.view.update()
+        self.view.update(self.clock.get_time()/1000.0)
 
     def cleanup(self):
         pygame.quit()
