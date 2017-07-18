@@ -11,6 +11,7 @@ License:    Apache License 2.0
 
 import pygame
 import json
+import random
 from ast import literal_eval
 
 
@@ -37,7 +38,8 @@ class PlayerSprite(pygame.sprite.Sprite):
         super(PlayerSprite, self).__init__()
 
         # setup image
-        r = settings.PLAYER_RADIUS
+        self.radius = settings.PLAYER_RADIUS
+        r = self.radius
         self.image = pygame.Surface((r*2, r*2), pygame.SRCALPHA)
         self.image.fill(colors.CLEAR)
         pygame.draw.circle(self.image, colors.RED, (r, r), r, 0)
@@ -49,9 +51,8 @@ class PlayerSprite(pygame.sprite.Sprite):
         self._drag = settings.PLAYER_DRAG
         self._pos = (20.0, 100.0) # unsnapped position
         self._vel = (0.0, 0.0)
+        self._set_rect_pos()
 
-        pos = tuple((int(x) for x in self._pos))
-        self.rect.center = pos
 
     def set_direction(self, up, down, left, right):
         if up and not down:
@@ -80,18 +81,37 @@ class PlayerSprite(pygame.sprite.Sprite):
 
         self._dir = (x,y)
 
-    def update(self, timestep):
+    def move(self, timestep):
         # velocities are pixels/sec
         dx = (1.0-timestep*self._drag)*self._vel[0] + timestep*self._acc*self._dir[0]
         dy = (1.0-timestep*self._drag)*self._vel[1] + timestep*self._acc*self._dir[1]
-        print("x={}\tdx={}\ttimestep={}\tdrag={}\tacc=={}".format(self._pos[0],dx,timestep,self._drag,self._acc)) 
 
         self._vel = (dx, dy)
         self._pos = (self._pos[0]+self._vel[0]*timestep,
                      self._pos[1]+self._vel[1]*timestep)
-        pos = tuple((int(x) for x in self._pos))
-        self.rect.center = pos
+        self._set_rect_pos()
 
+    def _set_rect_pos(self):
+        self.rect.center = (int(self._pos[0]-self.radius), int(self._pos[1]+self.radius))
+
+
+class Objective(pygame.sprite.Sprite):
+
+    """ The objective of the game is to reach this """
+
+    def __init__(self):
+        super(Objective, self).__init__()
+
+        # setup image
+        self.radius = settings.OBJECTIVE_RADIUS
+        r = self.radius
+        self.image = pygame.Surface((r*2, r*2), pygame.SRCALPHA)
+        #self.image.fill(colors.CLEAR)
+        pygame.draw.circle(self.image, colors.GREEN, (r, r), r, 0)
+        self.rect = self.image.get_rect()
+        self.image = self.image.convert_alpha()
+        self.rect.x = random.randrange(settings.SCREEN_SIZE[0])
+        self.rect.y = random.randrange(settings.SCREEN_SIZE[1])
 
 class View():
 
@@ -119,9 +139,9 @@ class View():
         """ Manually draw to screen """
         self.screen.blit(surface, pos)
 
-    def update(self, timestep):
+    def update(self):
         for k, v in self._spriteGroups.items():
-            v.update(timestep)
+            v.update()
             v.draw(self.screen)
         pygame.display.update()
 
@@ -133,20 +153,23 @@ class MazeRunner():
     def __init__(self):
         pygame.init()
         self.view = View()
-        self.running = False
-        self.runtime = 0
+        self.state = 'done'
         
         # setup
+        self.runtime = 0
+        self.playtime = 0
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont('freeansbold.ttf', 24)
 
-        # player
+        # create all sprites
         self.playerSprite = PlayerSprite()
         self.view.store_sprite(self.playerSprite, 'player')
+        self.objective = Objective()
+        self.view.store_sprite(self.objective, 'objective')
 
     def run(self):
-        self.running = True
-        while self.running:
+        self.state = 'running'
+        while self.state != 'done':
             self.runtime += self.clock.tick(settings.FPS)
             self._controlTick()
             self._viewTick()
@@ -154,23 +177,33 @@ class MazeRunner():
     def _controlTick(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.running = False
+                self.state = 'done'
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    self.running = False
+                    self.state = 'done'
 
         keys_pressed = pygame.key.get_pressed()
         self.playerSprite.set_direction(keys_pressed[pygame.K_UP],
                                         keys_pressed[pygame.K_DOWN],
                                         keys_pressed[pygame.K_LEFT],
                                         keys_pressed[pygame.K_RIGHT])
+        
+        if self.state == 'running':
+            self.playerSprite.move(self.clock.get_time()/1000.0) 
+            self.playtime = self.runtime
+            self._update_state()
+ 
 
     def _viewTick(self):
-        msg = "Run time: {}".format(str(self.runtime/1000.0))
+        msg = "Run time: {}".format(str(self.playtime/1000.0))
         HUDclock = self.font.render(msg, True, colors.BLACK)
         self.view.draw_background()
         self.view.blit(HUDclock, (50,50))
-        self.view.update(self.clock.get_time()/1000.0)
+        self.view.update()
+
+    def _update_state(self):
+        if pygame.sprite.collide_circle(self.playerSprite, self.objective):
+            self.state = "victory"
 
     def cleanup(self):
         pygame.quit()
