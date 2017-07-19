@@ -113,24 +113,53 @@ class Objective(pygame.sprite.Sprite):
         self.rect.x = random.randrange(settings.SCREEN_SIZE[0])
         self.rect.y = random.randrange(settings.SCREEN_SIZE[1])
 
+
+class SpriteMediator():
+
+    """ Manages state and interaction of sprites """
+
+    def __init__(self):
+        
+        self.groups = {}
+        
+        # create all sprites
+        self.playerSprite = PlayerSprite()
+        self.store_sprite(self.playerSprite, 'player')
+        self.objective = Objective()
+        self.store_sprite(self.objective, 'objective')
+
+    def store_sprite(self, sprite, groupName):
+        if groupName not in self.groups:
+            self.groups[groupName] = pygame.sprite.Group()
+        sprite.add(self.groups[groupName])
+
+    def register_inputs(self, cmds):
+        self._cmds = cmds
+
+    def update(self, timestep):
+        """ Updates position and other attributes, but does not draw """
+        self.playerSprite.set_direction(*self._cmds)
+        self.playerSprite.move(timestep)
+
+    def update_state(self):
+        if pygame.sprite.collide_circle(self.playerSprite, self.objective):
+            return "victory"
+        return "running"
+
+
 class View():
 
     """ Controls all displays to screen """
 
     def __init__(self):
+
         self.screen = pygame.display.set_mode(settings.SCREEN_SIZE)
         pygame.display.set_caption("Maze Runner by Geugon")
-        self._spriteGroups = {}
 
         # background
         self.background = pygame.Surface(self.screen.get_size())
         self.background.fill(colors.WHITE)
         self.background = self.background.convert()
-
-    def store_sprite(self, sprite, groupName):
-        if groupName not in self._spriteGroups:
-            self._spriteGroups[groupName] = pygame.sprite.Group()
-        sprite.add(self._spriteGroups[groupName])
 
     def draw_background(self):
         self.screen.blit(self.background, (0,0))
@@ -139,8 +168,8 @@ class View():
         """ Manually draw to screen """
         self.screen.blit(surface, pos)
 
-    def update(self):
-        for k, v in self._spriteGroups.items():
+    def update(self, spriteGroups):
+        for k, v in spriteGroups.items():
             v.update()
             v.draw(self.screen)
         pygame.display.update()
@@ -153,6 +182,7 @@ class MazeRunner():
     def __init__(self):
         pygame.init()
         self.view = View()
+        self.sprites = SpriteMediator()
         self.state = 'done'
         
         # setup
@@ -160,12 +190,6 @@ class MazeRunner():
         self.playtime = 0
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont('freeansbold.ttf', 24)
-
-        # create all sprites
-        self.playerSprite = PlayerSprite()
-        self.view.store_sprite(self.playerSprite, 'player')
-        self.objective = Objective()
-        self.view.store_sprite(self.objective, 'objective')
 
     def run(self):
         self.state = 'running'
@@ -183,15 +207,14 @@ class MazeRunner():
                     self.state = 'done'
 
         keys_pressed = pygame.key.get_pressed()
-        self.playerSprite.set_direction(keys_pressed[pygame.K_UP],
-                                        keys_pressed[pygame.K_DOWN],
-                                        keys_pressed[pygame.K_LEFT],
-                                        keys_pressed[pygame.K_RIGHT])
-        
+        cmds = (keys_pressed[pygame.K_UP], keys_pressed[pygame.K_DOWN],
+                keys_pressed[pygame.K_LEFT], keys_pressed[pygame.K_RIGHT])
+        self.sprites.register_inputs(cmds)
+
         if self.state == 'running':
-            self.playerSprite.move(self.clock.get_time()/1000.0) 
+            self.sprites.update(self.clock.get_time()/1000.0) 
             self.playtime = self.runtime
-            self._update_state()
+            self.state = self.sprites.update_state()
  
 
     def _viewTick(self):
@@ -199,11 +222,7 @@ class MazeRunner():
         HUDclock = self.font.render(msg, True, colors.BLACK)
         self.view.draw_background()
         self.view.blit(HUDclock, (50,50))
-        self.view.update()
-
-    def _update_state(self):
-        if pygame.sprite.collide_circle(self.playerSprite, self.objective):
-            self.state = "victory"
+        self.view.update(self.sprites.groups)
 
     def cleanup(self):
         pygame.quit()
