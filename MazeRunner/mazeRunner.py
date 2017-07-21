@@ -30,18 +30,17 @@ class Settings():
             setattr(self, k, literal_eval(v))
 
 
-class PlayerSprite(pygame.sprite.Sprite):
+class Player(pygame.sprite.Sprite):
 
     """ Player's Sprite """
 
     def __init__(self):
-        super(PlayerSprite, self).__init__()
+        super(Player, self).__init__()
 
         # setup image
         self.radius = settings.PLAYER_RADIUS
         r = self.radius
         self.image = pygame.Surface((r*2, r*2), pygame.SRCALPHA)
-        self.image.fill(colors.CLEAR)
         pygame.draw.circle(self.image, colors.RED, (r, r), r, 0)
         self.rect = self.image.get_rect()
         self.image = self.image.convert_alpha()
@@ -81,19 +80,43 @@ class PlayerSprite(pygame.sprite.Sprite):
 
         self._dir = (x,y)
 
-    def move(self, timestep):
+    def move(self, timestep, mediator):
         # velocities are pixels/sec
         dx = (1.0-timestep*self._drag)*self._vel[0] + timestep*self._acc*self._dir[0]
         dy = (1.0-timestep*self._drag)*self._vel[1] + timestep*self._acc*self._dir[1]
-
         self._vel = (dx, dy)
-        self._pos = (self._pos[0]+self._vel[0]*timestep,
-                     self._pos[1]+self._vel[1]*timestep)
-        self._set_rect_pos()
+
+        old_pos = self._pos
+        self._pos = (old_pos[0]+self._vel[0]*timestep,
+                     old_pos[1]+self._vel[1]*timestep)
+        if mediator.approve_move():
+            self._set_rect_pos()
+        else:
+            self._vel = (-dx*1.0, -dy*1.0)
+            self._pos = (old_pos[0]+self._vel[0]*timestep,
+                         old_pos[1]+self._vel[1]*timestep)
+            self._set_rect_pos()
+            
 
     def _set_rect_pos(self):
         self.rect.center = (int(self._pos[0]-self.radius), int(self._pos[1]+self.radius))
 
+
+class Block(pygame.sprite.Sprite):
+
+    """ Obstacle to prevent player movement """
+
+    def __init__(self, pos):
+        super(Block, self).__init__()
+        self.size= settings.BLOCK_SIZE
+        s = self.size
+        self.image = pygame.Surface((s,s))
+        self.rect = self.image.get_rect()
+        pygame.draw.rect(self.image, colors.BLACK, self.rect)
+        self.image = self.image.convert()
+        self.rect.x = pos[0]
+        self.rect.y = pos[1]
+        
 
 class Objective(pygame.sprite.Sprite):
 
@@ -106,7 +129,6 @@ class Objective(pygame.sprite.Sprite):
         self.radius = settings.OBJECTIVE_RADIUS
         r = self.radius
         self.image = pygame.Surface((r*2, r*2), pygame.SRCALPHA)
-        #self.image.fill(colors.CLEAR)
         pygame.draw.circle(self.image, colors.GREEN, (r, r), r, 0)
         self.rect = self.image.get_rect()
         self.image = self.image.convert_alpha()
@@ -123,10 +145,15 @@ class SpriteMediator():
         self.groups = {}
         
         # create all sprites
-        self.playerSprite = PlayerSprite()
-        self.store_sprite(self.playerSprite, 'player')
+        self.player = Player()
+        self.store_sprite(self.player, 'player')
         self.objective = Objective()
         self.store_sprite(self.objective, 'objective')
+        
+        self.walls = []
+        for pos in [(20,200),(25,200)]:
+            self.walls.append(Block(pos))
+            self.store_sprite(self.walls[-1], 'wall')
 
     def store_sprite(self, sprite, groupName):
         if groupName not in self.groups:
@@ -138,11 +165,17 @@ class SpriteMediator():
 
     def update(self, timestep):
         """ Updates position and other attributes, but does not draw """
-        self.playerSprite.set_direction(*self._cmds)
-        self.playerSprite.move(timestep)
+        self.player.set_direction(*self._cmds)
+        self.player.move(timestep, self)
+
+    def approve_move(self):
+        if pygame.sprite.groupcollide(self.groups['player'], self.groups['wall'], False, False):
+            return False
+        else:
+            return True
 
     def update_state(self):
-        if pygame.sprite.collide_circle(self.playerSprite, self.objective):
+        if pygame.sprite.collide_circle(self.player, self.objective):
             return "victory"
         return "running"
 

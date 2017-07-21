@@ -3,6 +3,7 @@
     "FPS": "60",
 
     "OBJECTIVE_RADIUS": "12",
+    "BLOCK_SIZE": "5",
 
     "PLAYER_RADIUS": "7",
     "PLAYER_MAXSPEED": "600.0",
