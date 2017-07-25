@@ -82,24 +82,26 @@ class Player(pygame.sprite.Sprite):
 
     def move(self, timestep, mediator):
         # velocities are pixels/sec
-        dx = (1.0-timestep*self._drag)*self._vel[0] + timestep*self._acc*self._dir[0]
-        dy = (1.0-timestep*self._drag)*self._vel[1] + timestep*self._acc*self._dir[1]
+        dx = ((1.0-timestep*self._drag)*self._vel[0] + 
+              timestep*self._acc*self._dir[0])
+        dy = ((1.0-timestep*self._drag)*self._vel[1] + 
+              timestep*self._acc*self._dir[1])
         self._vel = (dx, dy)
 
         old_pos = self._pos
         self._pos = (old_pos[0]+self._vel[0]*timestep,
                      old_pos[1]+self._vel[1]*timestep)
+        self._set_rect_pos()
         if mediator.approve_move():
-            self._set_rect_pos()
+            pass
         else:
-            self._vel = (-dx*1.0, -dy*1.0)
-            self._pos = (old_pos[0]+self._vel[0]*timestep,
-                         old_pos[1]+self._vel[1]*timestep)
+            self._vel = (-dx*0.5, -dy*0.5)
+            self._pos = (old_pos[0], old_pos[1])
             self._set_rect_pos()
-            
 
     def _set_rect_pos(self):
-        self.rect.center = (int(self._pos[0]-self.radius), int(self._pos[1]+self.radius))
+        self.rect.center = (int(self._pos[0]-self.radius),
+                            int(self._pos[1]+self.radius))
 
 
 class Block(pygame.sprite.Sprite):
@@ -151,7 +153,7 @@ class SpriteMediator():
         self.store_sprite(self.objective, 'objective')
         
         self.walls = []
-        for pos in [(20,200),(25,200)]:
+        for pos in [(15,200),(25,200)]:
             self.walls.append(Block(pos))
             self.store_sprite(self.walls[-1], 'wall')
 
@@ -164,12 +166,15 @@ class SpriteMediator():
         self._cmds = cmds
 
     def update(self, timestep):
-        """ Updates position and other attributes, but does not draw """
+        """ Updates position and other attributes,
+            but does not draw """
         self.player.set_direction(*self._cmds)
         self.player.move(timestep, self)
 
     def approve_move(self):
-        if pygame.sprite.groupcollide(self.groups['player'], self.groups['wall'], False, False):
+        if pygame.sprite.groupcollide(self.groups['player'],
+                                      self.groups['wall'],
+                                      False, False):
             return False
         else:
             return True
@@ -240,8 +245,10 @@ class MazeRunner():
                     self.state = 'done'
 
         keys_pressed = pygame.key.get_pressed()
-        cmds = (keys_pressed[pygame.K_UP], keys_pressed[pygame.K_DOWN],
-                keys_pressed[pygame.K_LEFT], keys_pressed[pygame.K_RIGHT])
+        cmds = (keys_pressed[pygame.K_UP],
+                keys_pressed[pygame.K_DOWN],
+                keys_pressed[pygame.K_LEFT],
+                keys_pressed[pygame.K_RIGHT])
         self.sprites.register_inputs(cmds)
 
         if self.state == 'running':
