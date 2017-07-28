@@ -18,6 +18,55 @@ from ast import literal_eval
 ROOT2 = 0.5**0.5
 
 
+def circle_collide_rect(pos, radius, rect):
+    """ Calculate if circle intersects rect """
+
+    # check if far away (allows skip of detailed calc)
+    over_big_check = (radius+rect.width+rect.width)**2
+    x2 = (pos[0]-rect.center[0])**2
+    y2 = (pos[1]-rect.center[1])**2
+    if over_big_check < x2 + y2:
+        return False
+
+    # check x-extended rect
+    xrect = pygame.Rect(rect.left-radius, rect.top,
+                        rect.width+2*radius, rect.height)
+    if point_in_rect(pos, xrect):
+        return True
+
+    # check y-extended rect
+    yrect = pygame.Rect(rect.left, rect.top-radius,
+                        rect.width, rect.height+2*radius)
+    if point_in_rect(pos, yrect):
+        return True
+
+    # check near corners
+    if any([point_in_circle(rect.topleft, pos, radius),
+           point_in_circle(rect.topright, pos, radius),
+           point_in_circle(rect.bottomleft, pos, radius),
+           point_in_circle(rect.bottomright, pos, radius)]):
+        return True
+
+    # no other collisions possible
+    return False
+
+
+def point_in_rect(pos, rect):
+    if (rect.left < pos[0] < rect.right and
+        rect.top < pos[1] < rect.bottom):
+        return True
+    else:
+        return False
+
+def point_in_circle(pos, circle_pos, radius):
+    dx = pos[0]-circle_pos[0]
+    dy = pos[1]-circle_pos[1]
+    if dx*dx + dy*dy < radius*radius:
+        return True
+    else:
+        return False
+
+
 class Settings():
     
     """ Parses and stores settings from input json file """
@@ -153,7 +202,7 @@ class SpriteMediator():
         self.store_sprite(self.objective, 'objective')
         
         self.walls = []
-        for pos in [(15,200),(25,200)]:
+        for pos in [(15,200),(20,200),(25,200),(30,200)]:
             self.walls.append(Block(pos))
             self.store_sprite(self.walls[-1], 'wall')
 
@@ -172,9 +221,16 @@ class SpriteMediator():
         self.player.move(timestep, self)
 
     def approve_move(self):
+        def collider(player, block):
+            return circle_collide_rect(player.rect.center,
+                                       player.radius-1.0,
+                                       block.rect)
+
         if pygame.sprite.groupcollide(self.groups['player'],
                                       self.groups['wall'],
-                                      False, False):
+                                      False,
+                                      False,
+                                      collided = collider):
             return False
         else:
             return True
