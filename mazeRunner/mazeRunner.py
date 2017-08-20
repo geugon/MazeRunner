@@ -79,12 +79,12 @@ class Settings():
             setattr(self, k, literal_eval(v))
 
 
-class Player(pygame.sprite.Sprite):
+class Runner(pygame.sprite.Sprite):
 
-    """ Player's Sprite """
+    """ Runner's Sprite """
 
     def __init__(self):
-        super(Player, self).__init__()
+        super(Runner, self).__init__()
 
         # setup image
         self.radius = settings.PLAYER_RADIUS
@@ -196,7 +196,7 @@ class SpriteMediator():
         self.groups = {}
         
         # create all sprites
-        self.player = Player()
+        self.player = Runner()
         self.store_sprite(self.player, 'player')
         self.objective = Objective()
         self.store_sprite(self.objective, 'objective')
