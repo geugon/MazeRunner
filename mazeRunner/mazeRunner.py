@@ -22,7 +22,7 @@ def circle_collide_rect(pos, radius, rect):
     """ Calculate if circle intersects rect """
 
     # check if far away (allows skip of detailed calc)
-    over_big_check = (radius+rect.width+rect.width)**2
+    over_big_check = (radius+rect.width+rect.height)**2
     x2 = (pos[0]-rect.center[0])**2
     y2 = (pos[1]-rect.center[1])**2
     if over_big_check < x2 + y2:
@@ -97,7 +97,7 @@ class Runner(pygame.sprite.Sprite):
         # setup movement
         self._acc = settings.PLAYER_MAXSPEED*settings.PLAYER_DRAG
         self._drag = settings.PLAYER_DRAG
-        self._pos = (20.0, 100.0) # unsnapped position
+        self._pos = (30.0, 100.0) # unsnapped position
         self._vel = (0.0, 0.0)
         self._set_rect_pos()
 
@@ -153,6 +153,33 @@ class Runner(pygame.sprite.Sprite):
                             int(self._pos[1]+self.radius))
 
 
+class WallFactory():
+
+    """ Generates multiple block to ease maze construction """
+
+    def __init__(self):
+        pass
+
+    def build_wall(self, start_pos, dir, length):
+        walls = []
+        pos = (start_pos[0]-dir[0]*settings.BLOCK_SIZE, start_pos[1]-dir[1]*settings.BLOCK_SIZE)
+        for _ in range(int(length/settings.BLOCK_SIZE)):
+            pos = (pos[0]+dir[0]*settings.BLOCK_SIZE, pos[1]+dir[1]*settings.BLOCK_SIZE)
+            print(pos)
+            walls.append(Block(pos))
+        return walls
+
+    def bounding_box(self):
+        walls = []
+        bs = settings.BLOCK_SIZE
+        bot_right = (settings.SCREEN_SIZE[0]-2*bs, settings.SCREEN_SIZE[1]-2*bs)
+        walls += self.build_wall((bs,bs), (1,0), settings.SCREEN_SIZE[0]-2*bs)
+        walls += self.build_wall((bs,bs), (0,1), settings.SCREEN_SIZE[1]-2*bs)
+        walls += self.build_wall(bot_right, (-1,0), settings.SCREEN_SIZE[0]-2*bs)
+        walls += self.build_wall(bot_right, (0,-1), settings.SCREEN_SIZE[1]-2*bs)
+        return walls
+
+
 class Block(pygame.sprite.Sprite):
 
     """ Obstacle to prevent player movement """
@@ -202,9 +229,18 @@ class SpriteMediator():
         self.store_sprite(self.objective, 'objective')
         
         self.walls = []
-        for pos in [(15,200),(20,200),(25,200),(30,200)]:
-            self.walls.append(Block(pos))
-            self.store_sprite(self.walls[-1], 'wall')
+        self.wallFactory = WallFactory()
+
+        walls = self.wallFactory.build_wall((15,200), (1,0), 20)
+        for wall in walls:
+            self.store_sprite(wall, 'wall')
+        self.walls += walls
+
+        walls = self.wallFactory.bounding_box()
+        for wall in walls:
+            self.store_sprite(wall, 'wall')
+        self.walls += walls
+
 
     def store_sprite(self, sprite, groupName):
         if groupName not in self.groups:
